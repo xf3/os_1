@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { CurrentUserContext } from '../contexts/CurrentUserContext';
+import { PhotoApi } from './api';
 
 function Card({ card, onCardClick, onCardLike, onCardDelete }) {
   const cardStyle = { backgroundImage: `url(${card.link})` };
+  const api = useMemo(() => new PhotoApi(), []);
+
+  const currentUser = React.useContext(CurrentUserContext);
+
+  const isLiked = card.likes.some(i => i._id === currentUser._id);
 
   function handleClick() {
     onCardClick(card);
@@ -10,15 +16,23 @@ function Card({ card, onCardClick, onCardLike, onCardDelete }) {
 
   function handleLikeClick() {
     onCardLike(card);
+    api
+      .changeLikeCardStatus(card._id, !isLiked)
+      .then((newCard) => {
+        onCardLike(newCard);
+      })
+      .catch((err) => console.log(err));
   }
 
   function handleDeleteClick() {
-    onCardDelete(card);
+    api
+    .removeCard(card._id)
+    .then(() => {
+      onCardDelete(card._id);
+    })
+    .catch((err) => console.log(err));
   }
 
-  const currentUser = React.useContext(CurrentUserContext);
-
-  const isLiked = card.likes.some(i => i._id === currentUser._id);
   const cardLikeButtonClassName = `card__like-button ${isLiked && 'card__like-button_is-active'}`;
 
   const isOwn = card.owner._id === currentUser._id;
