@@ -3,18 +3,19 @@ import { Route, useHistory, Switch } from "react-router-dom";
 import Header from "./Header";
 import Main from "./Main";
 import Footer from "./Footer";
-import PopupWithForm from "./PopupWithForm";
+import PopupWithForm from "../common/PopupWithForm";
 import ImagePopup from "./ImagePopup";
-import api from "../utils/api";
 import { CurrentUserContext } from "../contexts/CurrentUserContext";
-import EditProfilePopup from "./EditProfilePopup";
-import EditAvatarPopup from "./EditAvatarPopup";
-import AddPlacePopup from "./AddPlacePopup";
-import Register from "./Register";
-import Login from "./Login";
+import AppApi from '../utils/api'
 import InfoTooltip from "./InfoTooltip";
 import ProtectedRoute from "./ProtectedRoute";
 import * as auth from "../utils/auth.js";
+const EditAvatar = React.lazy(() => import('profile/EditAvatar'));
+const EditProfile = React.lazy(() => import('profile/EditProfile'));
+const ViewProfile = React.lazy(() => import('profile/ViewProfile'));
+const AddPhoto = React.lazy(() => import('photo/AddPhoto'));
+const Login = React.lazy(() => import('auth/Login'));
+const Register = React.lazy(() => import('auth/Register'));
 
 function App() {
   const [isEditProfilePopupOpen, setIsEditProfilePopupOpen] =
@@ -39,7 +40,7 @@ function App() {
 
   // Запрос к API за информацией о пользователе и массиве карточек выполняется единожды, при монтировании.
   React.useEffect(() => {
-    api
+    new AppApi()
       .getAppInfo()
       .then(([cardData, userData]) => {
         setCurrentUser(userData);
@@ -90,83 +91,51 @@ function App() {
     setSelectedCard(card);
   }
 
-  function handleUpdateUser(userUpdate) {
-    api
-      .setUserInfo(userUpdate)
-      .then((newUserData) => {
+  function handleUpdateUser(newUserData) {
         setCurrentUser(newUserData);
         closeAllPopups();
-      })
-      .catch((err) => console.log(err));
   }
 
-  function handleUpdateAvatar(avatarUpdate) {
-    api
-      .setUserAvatar(avatarUpdate)
-      .then((newUserData) => {
+  function handleUpdateAvatar(newUserData) {
         setCurrentUser(newUserData);
         closeAllPopups();
-      })
-      .catch((err) => console.log(err));
   }
 
   function handleCardLike(card) {
-    const isLiked = card.likes.some((i) => i._id === currentUser._id);
-    api
-      .changeLikeCardStatus(card._id, !isLiked)
-      .then((newCard) => {
         setCards((cards) =>
           cards.map((c) => (c._id === card._id ? newCard : c))
         );
-      })
-      .catch((err) => console.log(err));
   }
 
   function handleCardDelete(card) {
-    api
-      .removeCard(card._id)
-      .then(() => {
         setCards((cards) => cards.filter((c) => c._id !== card._id));
-      })
-      .catch((err) => console.log(err));
   }
 
-  function handleAddPlaceSubmit(newCard) {
-    api
-      .addCard(newCard)
-      .then((newCardFull) => {
+  function handleAddPlace(newCardFull) {
         setCards([newCardFull, ...cards]);
         closeAllPopups();
-      })
-      .catch((err) => console.log(err));
   }
 
-  function onRegister({ email, password }) {
-    auth
-      .register(email, password)
-      .then((res) => {
+  function onRegister() {
         setTooltipStatus("success");
         setIsInfoToolTipOpen(true);
-        history.push("/signin");
-      })
-      .catch((err) => {
+  }
+  function onRegisterError() {
         setTooltipStatus("fail");
         setIsInfoToolTipOpen(true);
-      });
+        setTooltipStatus("fail");
+        setIsInfoToolTipOpen(true);
   }
 
-  function onLogin({ email, password }) {
-    auth
-      .login(email, password)
-      .then((res) => {
+  function onLogin(email ) {
         setIsLoggedIn(true);
         setEmail(email);
         history.push("/");
-      })
-      .catch((err) => {
+  }
+
+  function onLoginError() {
         setTooltipStatus("fail");
         setIsInfoToolTipOpen(true);
-      });
   }
 
   function onSignOut() {
@@ -197,27 +166,27 @@ function App() {
             loggedIn={isLoggedIn}
           />
           <Route path="/signup">
-            <Register onRegister={onRegister} />
+            <Register onSuccess={onRegister} onError={onRegisterError} />
           </Route>
           <Route path="/signin">
-            <Login onLogin={onLogin} />
+            <Login onSuccess={onLogin} onError={onLoginError} />
           </Route>
         </Switch>
         <Footer />
-        <EditProfilePopup
+        <EditProfile
           isOpen={isEditProfilePopupOpen}
           onUpdateUser={handleUpdateUser}
           onClose={closeAllPopups}
         />
-        <AddPlacePopup
+        <AddPhoto
           isOpen={isAddPlacePopupOpen}
-          onAddPlace={handleAddPlaceSubmit}
+          onSuccess={handleAddPlace}
           onClose={closeAllPopups}
         />
         <PopupWithForm title="Вы уверены?" name="remove-card" buttonText="Да" />
-        <EditAvatarPopup
+        <EditAvatar
           isOpen={isEditAvatarPopupOpen}
-          onUpdateAvatar={handleUpdateAvatar}
+          onSuccess={handleUpdateAvatar}
           onClose={closeAllPopups}
         />
         <ImagePopup card={selectedCard} onClose={closeAllPopups} />
